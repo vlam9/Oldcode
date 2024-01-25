@@ -1,0 +1,215 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+install.packages("tidyverse")
+install.packages("readxl")
+install.packages("dplyr")
+install.packages("ggpubr")
+install.packages("rstatix")
+install.packages("ggprism")
+install.packages("png")
+install.packages("magick")
+install.packages("wesanderson")
+```
+
+
+
+```{r}
+library(ggplot2)
+library(readxl)
+library(dplyr)
+library(ggpubr)
+library(rstatix)
+library(ggprism)
+library(png)
+library(magick)
+library(grid)
+library(wesanderson)
+
+```
+
+
+```{r}
+df= read_excel("Stability.1Year.xlsx")
+df = mutate(df,Human.Genomic.Yield = Yield.Per.Device - (Qubit.Per/100*Yield.Per.Device) )
+#df = mutate(df,comparison=paste0(Devices,Timepoints))
+#df$comparison=paste(df$Devices,df$Timepoints,sep = "_")
+#names(df)
+```
+```{r}
+#filter devices
+
+Dinvalue = filter(df,Timepoints %in% c("Baseline","365 Days"))
+Dinvaluex = na.omit(Dinvalue)
+
+iSWAB= filter(df,Devices %in% "iSWAB-DNA-1200")
+DINiSWAB = na.omit(filter(iSWAB,Timepoints%in%c("Baseline","365 Days")))
+
+
+ORA = filter(df,Devices =="OCD-100")
+DINORA = (filter(ORA,Timepoints%in%c("Baseline","365 Days")))
+```
+
+
+
+
+```{r}
+#iSWAB-DNA 
+statistic1=iSWAB %>% wilcox_test(Yield.Per.Device ~ Timepoints,paired = F) %>% add_xy_position(x="Timepoints")
+statistic2=iSWAB %>% wilcox_test(Qubit.Per ~ Timepoints,paired = F) %>% add_xy_position(x="Timepoints")
+statistic4=iSWAB %>% wilcox_test(A260.A280 ~ Timepoints, paired = F) %>% add_xy_position(x="Timepoints")
+statistic3=Dinvaluex %>% wilcox_test(DIN ~ Timepoints,paired = F) %>% add_xy_position(x="Timepoints")
+```
+
+```{r}
+#iSWAB-ORA
+statistic1.1=ORA %>% wilcox_test(Yield.Per.Device ~ Timepoints,paired = F) %>% add_xy_position(x="Timepoints")
+statistic2.1=ORA %>% wilcox_test(Qubit.Per ~ Timepoints,paired = F) %>% add_xy_position(x="Timepoints",fun = "median_iqr")
+statistic4.1=ORA %>% wilcox_test(A260.A280 ~ Timepoints, paired = F) %>% add_xy_position(x="Timepoints")
+statistic3.1=DINORA %>% wilcox_test(DIN ~ Timepoints,paired = F) %>% add_xy_position(x="Timepoints")
+```
+
+
+
+```{r}
+df$Timepoints = factor(df$Timepoints, levels = c("Baseline","30 Days","60 Days","365 Days"))
+iSWAB$Timepoints = factor(iSWAB$Timepoints, levels = c("Baseline","30 Days","60 Days","365 Days"))
+DINiSWAB$Timepoints = factor(DINiSWAB$Timepoints, levels = c("Baseline","30 Days","60 Days","365 Days"))
+DINORA$Timepoints = factor(DINORA$Timepoints, levels = c("Baseline","30 Days","60 Days","365 Days"))
+```
+
+```{r}
+#iSWAB DNA
+pic1 = ggboxplot(iSWAB, x="Timepoints", y="Yield.Per.Device",title = "iSWAB-DNA-1200",add = "jitter", color = "Timepoints",palette = c("coral", "chocolate3", "coral3","red"))+ xlab("Timepoint") + ylab("Yield (μg)")+ stat_pvalue_manual(statistic1,tip.length = 0.01,hide.ns = T)+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,150)+stat_boxplot(geom = "errorbar",width = 0.15)+theme_classic()
+pic1
+```
+```{r}
+#iSWAB DNA
+pic2 = ggboxplot(iSWAB, x="Timepoints", y="A260.A280",title = "iSWAB-DNA-1200",add = "jitter", color = "Timepoints",palette = c("coral", "chocolate3", "coral3","red"))+ xlab("Timepoint") + ylab("DNA Purity Ratio A260/A280")+ stat_pvalue_manual(statistic4,tip.length = 0.01,hide.ns = T)+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,3)+stat_boxplot(geom = "errorbar",width = 0.15)+theme_classic()
+pic2
+```
+
+
+```{r}
+#iSWAB DNA
+pic3 = ggboxplot(iSWAB, x="Timepoints", y="Qubit.Per",title = "iSWAB-DNA-1200",add = "jitter", color = "Timepoints",palette = c("coral", "chocolate3", "coral3","red"))+ xlab("Timepoint") + ylab("Bacterial DNA Ratio %")+ stat_pvalue_manual(statistic2,tip.length = 0.01,hide.ns = T)+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,100)+stat_boxplot(geom = "errorbar",width = 0.15)+theme_classic()
+pic3
+
+```
+```{r}
+#iSWAB-DNA
+pic6 = ggboxplot(DINiSWAB, x="Timepoints", y="DIN",title = "iSWAB-DNA-1200",add = "jitter", color = "Timepoints",palette = c("coral","red"),width = 0.3)+ xlab("Timepoint") + ylab("DIN-DNA Integrity")+ stat_pvalue_manual(statistic3,tip.length = 0.01,hide.ns = T)+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,10)+stat_boxplot(geom = "errorbar",width = 0.15)+theme_classic()
+pic6
+```
+
+```{r}
+
+
+# Set the file path of the image using forward slashes
+file_path <- "C:/Users/vlam/Mawi DNA Technologies LLC/RnD - Documents/1. R&D Ongoing Projects/1. iSWAB-DNA/White Paper/Post Collection Stablity/R/4.png"
+
+# Read the image file using magick
+img <- image_read(file_path)
+
+# Create a ggplot object with no data
+p <- ggplot() +
+  theme_void()
+
+# Add the image as a custom annotation
+pic5 <- p +
+  annotation_custom(
+    grob = rasterGrob(img),
+    xmin = -Inf, xmax = Inf,
+    ymin = -Inf, ymax = Inf
+  )
+
+# Display the plot with the image
+pic5
+
+
+```
+
+
+
+```{r}
+ggarrange(pic1,pic4,pic3,ncol=3,nrow=1,align = "hv",labels = "AUTO",common.legend = T,widths = 6,heights = 3,legend = "none")
+ggsave(filename = "pic_shelflife_B.pdf",device = "pdf", width = 10, height = 5)
+```
+```{r}
+#Benchtop report
+pic1.1 = ggboxplot(iSWAB, x="Timepoints", y="Scale",title = "",add = "jitter", color = "Timepoints",palette = c("coral", "chocolate3", "coral3","red"))+ xlab("Timepoint") + ylab("Total Yield (μg)")+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,100)+stat_boxplot(geom = "errorbar",width = 0.15)+theme_classic()
+pic1.1
+
+ggarrange(pic1.1,pic3,ncol=2,nrow=1,align = "hv",labels = "AUTO",common.legend = T,widths = 6,heights = 3,legend = "none")
+ggsave(filename = "pic_shelflife_ben.pdf",device = "pdf", width = 10, height = 18)
+
+```
+
+
+
+```{r}
+#ORA
+ORA$Timepoints=factor(ORA$Timepoints,levels=c("Baseline","30 Days","60 Days","365 Days"))
+ORA1 = ggboxplot(ORA, x="Timepoints", y="Yield.Per.Device",title = " OCD-100  ",add = "jitter", color = "Timepoints",palette = c("coral", "chocolate3", "coral3","red"))+ xlab("Timepoint") + ylab(" Yield (μg)")+ stat_pvalue_manual(statistic1.1,tip.length = 0.01,hide.ns = T)+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,100)+stat_boxplot(geom = "errorbar",width = 0.15)+theme_classic()
+ORA1
+```
+
+```{r}
+#ORA
+
+
+ORA2 =ggboxplot(ORA, x="Timepoints", y="Qubit.Per",title = " OCD-100",add = "jitter", color = "Timepoints",palette = c("coral", "chocolate3", "coral3","red"))+ xlab("Timepoint") + ylab("Bacterial DNA Ratio %")+ stat_pvalue_manual(statistic2.1,tip.length = 0.01,hide.ns = F)+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,100)+stat_boxplot(geom = "errorbar",width = 0.15)+theme_classic()
+ORA2
+```
+```{r}
+#ORA
+statistic3.1$value = "***"
+ORA3 = ggboxplot(DINORA, x="Timepoints", y="DIN",title = " OCD-100",add = "jitter", color = "Timepoints",palette = c("coral","red"),width = 0.3)+ xlab("Timepoint") + ylab("DIN-DNA Integrity")+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,10)+stat_boxplot(geom = "errorbar",width = 0.15)+theme_classic()+stat_pvalue_manual(statistic3.1,tip.length = 0.02,hide.ns = T,label = "value")
+ORA3 
+```
+
+
+```{r}
+ggarrange(pic1,ORA1,pic3,ORA2,pic6,ORA3,ncol=2,nrow=3,align = "hv",labels = "AUTO",common.legend = T,widths = 6,heights = 3,legend = "none")
+ggsave(filename = "master.png",device = "png", width = 6, height = 8)
+```
+
+```{r}
+#ORA
+ggboxplot(ORA, x="Timepoints", y="A260.A280",title = "DNA Purity A260/A280 -OCD-100 ",add = "jitter", color = "Timepoints")+ xlab("Timepoint") + ylab("DNA Purity Ratio A260/A280")+ stat_pvalue_manual(statistic4.1,tip.length = 0.01,hide.ns = T)+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,3)+stat_boxplot(geom = "errorbar",width = 0.15)+theme_bw()
+```
+
+
+
+
+```{r}
+#Yield per devices - each timepoint -both devices
+ggboxplot(df, x="Timepoints", y="Yield.Per.Device",add = "jitter", color = "Timepoints",palette = c("coral", "chocolate3", "coral3","red"))+ xlab("Timepoint") + ylab(" Yield (μg)")+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,100)+stat_boxplot(geom = "errorbar",width = 0.15)+facet_wrap(~Devices)+theme_classic()
+
+```
+
+```{r}
+#BacterialDNA Percentage - each timepoint -both devices
+ggboxplot(df, x="comparison", y="Qubit.Per",add = "jitter")+ xlab("") + ylab("Bacterial Concentration Percentge%")+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+stat_boxplot(geom = "errorbar",width = 0.15)+theme_classic()+stat_pvalue_manual(statistic1.2,tip.length = 0.01,hide.ns = T)
+
+```
+
+```{r}
+#Purity - each timepoint -both devices
+ggboxplot(df, x="Timepoints", y="A260.A280",add = "jitter", color = "Timepoints",palette = c("coral", "chocolate3", "coral3","red"))+ xlab("Timepoint") + ylab("A260/A280")+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,3)+stat_boxplot(geom = "errorbar",width = 0.15)+facet_wrap(~Devices)+theme_classic()
+
+```
+
+
+
+```{r}
+ggboxplot(Dinvaluex, x="Timepoints", y="DIN",add = "jitter", color = "Timepoints",palette = c("coral","red"))+ xlab("Timepoint") + ylab("DIN (DNA Interity)")+ theme(legend.position = "right",legend.title = element_blank(),plot.title= element_text(hjust = 0.5))+ylim(0,10)+stat_boxplot(geom = "errorbar",width = 0.15)+facet_wrap(~Devices)+theme_classic()
+```
+
